@@ -5,6 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSC Chhattisgarh - VLE & Micro ATM Mapping</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableReceipt, #printableReceipt * {
+        visibility: visible;
+      }
+      #printableReceipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-100 min-h-screen py-6 px-3 font-sans">
 
@@ -80,10 +102,16 @@
           <input type="text" id="lastName" maxlength="50" onkeydown="if(event.key===' ') event.preventDefault();" oninput="forceUpperNoSpace(this); validateField('lastName')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="LASTNAME">
           <p id="err_lastName" class="text-red-600 text-xs mt-1 hidden"></p>
         </div>
-        <div>
+        <div class="md:col-span-2">
           <label class="block text-xs font-semibold text-slate-700 mb-1">CSC ID (12 DIGITS) *</label>
           <input type="text" id="cscId" maxlength="12" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('cscId')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="XXXXXXXX001X">
           <p id="err_cscId" class="text-red-600 text-xs mt-1 hidden"></p>
+
+          <!-- DigiPay Lite ID Already Created Alert Box -->
+          <div id="digipayLiteAlert" class="hidden mt-2 bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-lg text-amber-950 text-xs leading-relaxed shadow-sm">
+            <p class="font-bold text-amber-900 text-sm mb-1">⚠️ DIGIPAY LITE ID ALREADY CREATED!</p>
+            <p id="digipayLiteMsgText"></p>
+          </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">PAN CARD NUMBER (INDIVIDUAL) *</label>
@@ -95,7 +123,7 @@
           <input type="tel" id="mobile" maxlength="10" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('mobile')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="9876543210">
           <p id="err_mobile" class="text-red-600 text-xs mt-1 hidden"></p>
         </div>
-        <div>
+        <div class="md:col-span-2">
           <label class="block text-xs font-semibold text-slate-700 mb-1">EMAIL ID * <span class="text-slate-400 font-normal">(STANDARD DOMAINS ONLY)</span></label>
           <input type="email" id="email" maxlength="100" oninput="forceLowerEmail(this); validateField('email')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm lowercase focus:outline-none" placeholder="example@gmail.com">
           <p id="err_email" class="text-red-600 text-xs mt-1 hidden"></p>
@@ -179,30 +207,116 @@
       </button>
     </form>
 
-    <!-- Success Receipt -->
-    <div id="receiptBox" class="p-6 text-center hidden space-y-3">
-      <div class="text-green-600 text-4xl font-bold">✓</div>
-      <h2 class="text-lg font-bold text-slate-800 uppercase">REGISTRATION SUCCESSFUL!</h2>
-      <p class="text-sm text-slate-600 uppercase">AAPKA ACKNOWLEDGEMENT NUMBER:</p>
-      <div id="ackDisplay" class="text-xl font-mono font-bold text-blue-800 bg-blue-50 py-2 px-4 rounded inline-block border border-blue-200 uppercase"></div>
-      <div class="pt-2">
-        <a id="mapAnchor" href="#" target="_blank" class="text-xs text-blue-600 underline uppercase">VIEW CAPTURED LOCATION ON GOOGLE MAPS</a>
+    <!-- Success Printable Acknowledgment Slip with QR Code -->
+    <div id="receiptBox" class="p-6 hidden">
+      <div id="printableReceipt" class="bg-white border-2 border-slate-300 rounded-lg p-6 max-w-2xl mx-auto">
+        
+        <!-- Slip Header -->
+        <div class="border-b-2 border-blue-800 pb-4 mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
+          <div>
+            <h2 class="text-lg font-extrabold text-blue-900 tracking-wide uppercase">CSC e-Governance Services India Limited</h2>
+            <p class="text-xs font-semibold text-slate-600 uppercase">Chhattisgarh State Operations — VLE & Micro ATM Acknowledgment Slip</p>
+          </div>
+          <div class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300 uppercase">
+            ✓ VERIFIED & SUBMITTED
+          </div>
+        </div>
+
+        <!-- Ack No, Date & Auto-Generated QR Code Bar -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
+          <div class="space-y-1.5 text-center sm:text-left">
+            <div>
+              <span class="text-slate-500 block uppercase">Acknowledgement Number:</span>
+              <span id="ackDisplay" class="text-base font-mono font-extrabold text-blue-900"></span>
+            </div>
+            <div>
+              <span class="text-slate-500 block uppercase">Submission Date & Time:</span>
+              <span id="recTimestamp" class="font-semibold text-slate-800"></span>
+            </div>
+          </div>
+
+          <!-- Auto-Generated QR Code Container -->
+          <div class="flex flex-col items-center bg-white p-2 rounded border border-slate-300 shadow-xs">
+            <div id="receiptQrCode"></div>
+            <span class="text-[9px] font-mono text-slate-500 mt-1 uppercase">SCAN TO VERIFY</span>
+          </div>
+        </div>
+
+        <!-- VLE Details Summary Table -->
+        <table class="w-full text-xs border-collapse border border-slate-300 mb-4">
+          <tbody>
+            <tr class="bg-slate-50">
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 w-1/3 uppercase">CSC ID</td>
+              <td id="recCscId" class="border border-slate-300 p-2 font-mono font-bold text-slate-900"></td>
+            </tr>
+            <tr>
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">VLE Full Name</td>
+              <td id="recVleName" class="border border-slate-300 p-2 font-bold text-slate-900 uppercase"></td>
+            </tr>
+            <tr class="bg-slate-50">
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">PAN Card / Mobile</td>
+              <td id="recPanMobile" class="border border-slate-300 p-2 font-mono text-slate-900 uppercase"></td>
+            </tr>
+            <tr>
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">Email ID</td>
+              <td id="recEmail" class="border border-slate-300 p-2 text-slate-900 lowercase"></td>
+            </tr>
+            <tr class="bg-slate-50">
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">Shop / Center Name</td>
+              <td id="recShopName" class="border border-slate-300 p-2 font-bold text-slate-900 uppercase"></td>
+            </tr>
+            <tr>
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">Location & Mapping</td>
+              <td id="recLocation" class="border border-slate-300 p-2 text-slate-900 uppercase"></td>
+            </tr>
+            <tr class="bg-slate-50">
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">Complete Address & PIN</td>
+              <td id="recAddress" class="border border-slate-300 p-2 text-slate-900 uppercase"></td>
+            </tr>
+            <tr>
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">CSC Micro ATM Status</td>
+              <td id="recAtmDetails" class="border border-slate-300 p-2 font-bold text-blue-900 uppercase"></td>
+            </tr>
+            <tr class="bg-slate-50">
+              <td class="border border-slate-300 p-2 font-semibold text-slate-600 uppercase">GPS Coordinates</td>
+              <td class="border border-slate-300 p-2 font-mono text-slate-900">
+                <span id="recGps"></span>
+                <a id="mapAnchor" href="#" target="_blank" class="ml-2 text-blue-600 underline no-print uppercase">[Open Map]</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Footer Note -->
+        <div class="text-[11px] text-slate-500 border-t border-slate-200 pt-3 flex justify-between items-center">
+          <span>* This is a system-generated acknowledgment slip for CSC Chhattisgarh State Operations.</span>
+          <span class="font-semibold text-slate-700">CSC SPV CHHATTISGARH</span>
+        </div>
       </div>
-      <button onclick="location.reload()" class="mt-4 bg-slate-800 text-white text-xs px-4 py-2 rounded uppercase">NEW ENTRY</button>
+
+      <!-- Action Buttons (Hidden during Print) -->
+      <div class="mt-5 flex flex-wrap justify-center gap-3 no-print">
+        <button type="button" onclick="window.print()" class="bg-green-700 hover:bg-green-800 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow flex items-center gap-2 uppercase transition">
+          🖨️ PRINT / SAVE PDF ACKNOWLEDGMENT SLIP
+        </button>
+        <button type="button" onclick="location.reload()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow uppercase transition">
+          + NEW ENTRY
+        </button>
+      </div>
     </div>
   </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1t8qlw-iAp0Z4-MTrs6aotvZVnQNrJVw00N7j9R3SCfDF3eKO2ukjqW9AaYMaX6Nm/exec"; // Yahan apna Web App URL dalein
+  const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; // Yahan apna Web App URL dalein
   let masterData = { rural: [], urban: [] };
   let existingSerialSet = new Set();
+  let digipayLiteMap = {}; // { "CSC_ID": "DIGIPAY_LITE_ID" }
 
   const modelEl = document.getElementById('atmModel');
   const serialEl = document.getElementById('serialNo');
   const serialError = document.getElementById('err_serialNo');
   const serialHint = document.getElementById('serialHint');
 
-  // Allowed Standard Email Domains
   const ALLOWED_EMAIL_DOMAINS = [
     'gmail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.in',
     'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
@@ -210,7 +324,6 @@
     'csc.gov.in', 'gov.in', 'nic.in'
   ];
 
-  // Input Sanitization Helpers
   function forceUpperAlphaSpace(el) {
     el.value = el.value.replace(/[^A-Za-z\s]/g, '').toUpperCase();
   }
@@ -240,6 +353,9 @@
       masterData.urban = json.urban;
       if (Array.isArray(json.existingSerials)) {
         existingSerialSet = new Set(json.existingSerials.map(s => String(s).trim().toUpperCase()));
+      }
+      if (json.digipayLiteMap && typeof json.digipayLiteMap === 'object') {
+        digipayLiteMap = json.digipayLiteMap;
       }
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('vleForm').classList.remove('hidden');
@@ -402,7 +518,6 @@
       return false;
     }
 
-    // MOREFUN aur EUREKA me sirf digits allow karein; PAX me A-Z aur 0-9
     if (model === 'MOREFUN-MP63' || model === 'EUREKA-Y50') {
       serialEl.value = serialEl.value.replace(/\D/g, '');
     } else {
@@ -411,7 +526,6 @@
 
     const val = serialEl.value;
 
-    // 1. Duplicate Check
     if (val && existingSerialSet.has(val)) {
       serialError.textContent = `Duplicate Blocked: Serial Number (${val}) pehle se register ho chuka hai!`;
       serialError.classList.remove('hidden');
@@ -419,7 +533,6 @@
       return false;
     }
 
-    // 2. Format Check
     let isValid = false;
     let errMsg = '';
 
@@ -443,6 +556,25 @@
       serialEl.classList.remove('border-red-500', 'bg-red-50');
     }
     return isValid;
+  }
+
+  // DigiPay Lite ID Already Created Display Helper
+  function showDigipayLiteNotice(liteId) {
+    const alertBox = document.getElementById('digipayLiteAlert');
+    const msgEl = document.getElementById('digipayLiteMsgText');
+    const cscInput = document.getElementById('cscId');
+    
+    msgEl.innerHTML = `AAPKI DIGIPAY LITE ID PAHALE SE BAN GAI HAI JO KI <span class="font-mono font-bold text-blue-900 bg-white px-1.5 py-0.5 rounded border border-amber-300">"${liteId}"</span> HAI. KRIPAYA <a href="https://digipaylite.in/" target="_blank" class="text-blue-700 font-bold underline">https://digipaylite.in/</a> ME JA KAR <strong>FORGOT PASSWORD</strong> KAREN, AAPKO MSG ME OTP SATYAPAN KE BAAD TEXT MESSAGE ME PASSWORD BHI MIL JAYEGA.`;
+    alertBox.classList.remove('hidden');
+    cscInput.classList.remove('border-slate-300');
+    cscInput.classList.add('border-amber-500', 'bg-amber-50/40');
+  }
+
+  function hideDigipayLiteNotice() {
+    const alertBox = document.getElementById('digipayLiteAlert');
+    const cscInput = document.getElementById('cscId');
+    alertBox.classList.add('hidden');
+    cscInput.classList.remove('border-amber-500', 'bg-amber-50/40');
   }
 
   // Inline Error Helpers
@@ -504,10 +636,19 @@
           ? clearError('lastName')
           : setError('lastName', 'VLE Last Name is invalid. Only alphabets allowed, spaces are not allowed (2–50 chars).');
       }
-      case 'cscId':
-        return /^\d{8}001\d$/.test(val)
-          ? clearError('cscId')
-          : setError('cscId', "Enter valid 12-digit CSC ID (9th-10th digit '0' & 11th digit '1').");
+      case 'cscId': {
+        hideDigipayLiteNotice();
+        if (!/^\d{8}001\d$/.test(val)) {
+          return setError('cscId', "Enter valid 12-digit CSC ID (9th-10th digit '0' & 11th digit '1').");
+        }
+        clearError('cscId');
+        // Check if CSC ID exists in "DIGIPAY LITE ID CREATED LIST" (Col B -> Col E)
+        if (digipayLiteMap[val]) {
+          showDigipayLiteNotice(digipayLiteMap[val]);
+          return false;
+        }
+        return true;
+      }
       
       case 'panCard':
         return /^[A-Z]{3}P[A-Z][0-9]{4}[A-Z]$/.test(val.toUpperCase())
@@ -658,10 +799,52 @@
         if (payload.hasMicroAtm === 'YES' && payload.serialNo) {
           existingSerialSet.add(payload.serialNo);
         }
+
+        // Populate Printable Receipt Data
+        document.getElementById('ackDisplay').innerText = result.ackNo.toUpperCase();
+        document.getElementById('recTimestamp').innerText = new Date().toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+        }).toUpperCase();
+        document.getElementById('recCscId').innerText = payload.cscId;
+        document.getElementById('recVleName').innerText = `${payload.firstName} ${payload.lastName}`;
+        document.getElementById('recPanMobile').innerText = `${payload.panCard}  |  ${payload.mobile}`;
+        document.getElementById('recEmail').innerText = payload.email;
+        document.getElementById('recShopName').innerText = payload.shopName;
+        document.getElementById('recLocation').innerText = `[${payload.locationType}] ${payload.districtName} > ${payload.blockName} > ${payload.level3Name} > ${payload.level4Name}`;
+        document.getElementById('recAddress').innerText = `${payload.address}, ${payload.areaName} - ${payload.pinCode}`;
+        document.getElementById('recAtmDetails').innerText = payload.hasMicroAtm === 'YES'
+          ? `YES — MODEL: ${payload.atmModel} | SERIAL: ${payload.serialNo}`
+          : 'NO (MICRO ATM NOT AVAILABLE)';
+        document.getElementById('recGps').innerText = `${payload.lat}, ${payload.lng}`;
+        document.getElementById('mapAnchor').href = result.mapLink;
+
+        // Generate QR Code with ACK No, CSC ID, VLE Name & Serial No
+        const qrContainer = document.getElementById('receiptQrCode');
+        qrContainer.innerHTML = '';
+        const qrText = [
+          `ACK: ${result.ackNo.toUpperCase()}`,
+          `CSC ID: ${payload.cscId}`,
+          `NAME: ${payload.firstName} ${payload.lastName}`,
+          `ATM: ${payload.hasMicroAtm === 'YES' ? payload.serialNo : 'NO'}`
+        ].join(' | ');
+
+        new QRCode(qrContainer, {
+          text: qrText,
+          width: 78,
+          height: 78,
+          colorDark: "#0f172a",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+
         document.getElementById('vleForm').classList.add('hidden');
         document.getElementById('receiptBox').classList.remove('hidden');
-        document.getElementById('ackDisplay').innerText = result.ackNo.toUpperCase();
-        document.getElementById('mapAnchor').href = result.mapLink;
+        document.getElementById('receiptBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (result.status === 'digipay_exists') {
+        showDigipayLiteNotice(result.liteId);
+        document.getElementById('cscId').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        btn.disabled = false;
+        btn.innerText = "SUBMIT DETAILS";
       } else {
         const msg = result.message || "Submission failed.";
         if (msg.includes("CSC ID")) setError('cscId', msg);
