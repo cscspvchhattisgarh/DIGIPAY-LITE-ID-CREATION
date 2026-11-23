@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSC Chhattisgarh - VLE & Micro ATM Mapping</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen py-6 px-3 font-sans">
+
+  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+    <!-- Header -->
+    <div class="bg-blue-800 text-white p-5 text-center">
+      <h1 class="text-xl font-bold tracking-wide">CSC VLE & MICRO ATM MAPPING PORTAL</h1>
+      <p class="text-xs text-blue-200 mt-1">CHHATTISGARH STATE OPERATIONS</p>
+    </div>
+
+    <!-- Loading Banner -->
+    <div id="loader" class="bg-amber-50 text-amber-800 text-sm p-3 text-center border-b border-amber-200">
+      Master Data load ho raha hai, kripya pratiksha karein...
+    </div>
+
+    <!-- Server / Duplicate Error Banner -->
+    <div id="serverErrorBanner" class="hidden bg-red-50 border-l-4 border-red-600 text-red-800 p-4 m-6 mb-0 rounded text-sm font-medium flex justify-between items-center">
+      <span id="serverErrorText"></span>
+      <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-red-600 font-bold ml-4">✕</button>
+    </div>
+
+    <!-- Form -->
+    <form id="vleForm" class="p-6 space-y-5 hidden" novalidate>
+      
+      <!-- 1. Location Type Selection -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">LOCATION TYPE *</label>
+        <div class="flex gap-6">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="locationType" value="RURAL" checked onchange="toggleLocationType()" class="w-4 h-4 text-blue-600">
+            <span class="text-sm font-medium">RURAL (GRAMIN)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="locationType" value="URBAN" onchange="toggleLocationType()" class="w-4 h-4 text-blue-600">
+            <span class="text-sm font-medium">URBAN (SHAHRI)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Cascading Location Dropdowns -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">DISTRICT *</label>
+          <select id="district" onchange="onDistrictChange(); validateField('district')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none"></select>
+          <p id="err_district" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">BLOCK *</label>
+          <select id="block" onchange="onBlockChange(); validateField('block')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none"></select>
+          <p id="err_block" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label id="level3Label" class="block text-xs font-semibold text-slate-600 mb-1">GRAM PANCHAYAT *</label>
+          <select id="level3" onchange="onLevel3Change(); validateField('level3')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none"></select>
+          <p id="err_level3" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label id="level4Label" class="block text-xs font-semibold text-slate-600 mb-1">VILLAGE *</label>
+          <select id="level4" onchange="validateField('level4')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none"></select>
+          <p id="err_level4" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- 3. VLE Personal & KYC Details -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">VLE FIRST NAME * <span class="text-slate-400 font-normal">(ALPHABETS ONLY)</span></label>
+          <input type="text" id="firstName" maxlength="50" oninput="forceUpper(this); validateField('firstName')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="FIRST NAME">
+          <p id="err_firstName" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">VLE LAST NAME * <span class="text-slate-400 font-normal">(ALPHABETS ONLY)</span></label>
+          <input type="text" id="lastName" maxlength="50" oninput="forceUpper(this); validateField('lastName')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="LAST NAME">
+          <p id="err_lastName" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">CSC ID (12 DIGITS) *</label>
+          <input type="text" id="cscId" maxlength="12" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('cscId')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="XXXXXXXX001X">
+          <p id="err_cscId" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">PAN CARD NUMBER (INDIVIDUAL) *</label>
+          <input type="text" id="panCard" maxlength="10" oninput="forceUpper(this); validateField('panCard')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="ABCPK1234F">
+          <p id="err_panCard" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">MOBILE NUMBER (10 DIGITS) *</label>
+          <input type="tel" id="mobile" maxlength="10" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('mobile')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="9876543210">
+          <p id="err_mobile" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">EMAIL ID * <span class="text-slate-400 font-normal">(LOWERCASE ONLY)</span></label>
+          <input type="email" id="email" maxlength="100" oninput="forceLower(this); validateField('email')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm lowercase focus:outline-none" placeholder="example@gmail.com">
+          <p id="err_email" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- 4. Shop & Address Details -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-3">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">VLE SHOP / CENTER NAME * <span class="text-slate-400 font-normal">(5–50 CHARS; ONLY & . - ALLOWED)</span></label>
+          <input type="text" id="shopName" maxlength="50" oninput="forceUpper(this); validateField('shopName')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="E.G. MAA SHARDA CSC CENTER">
+          <p id="err_shopName" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">COMPLETE ADDRESS * <span class="text-slate-400 font-normal">(5–200 CHARS; ONLY , . / - ALLOWED)</span></label>
+          <input type="text" id="address" maxlength="200" oninput="forceUpper(this); validateField('address')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="SHOP NO 12, MAIN ROAD, NEAR BUS STAND">
+          <p id="err_address" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">AREA NAME * <span class="text-slate-400 font-normal">(3–30 CHARS; ONLY , . - ALLOWED)</span></label>
+          <input type="text" id="areaName" maxlength="30" oninput="forceUpper(this); validateField('areaName')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="COLONY / PARA / SECTOR">
+          <p id="err_areaName" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">PIN CODE (6 DIGITS) *</label>
+          <input type="text" id="pinCode" maxlength="6" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('pinCode')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="492001">
+          <p id="err_pinCode" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- 5. Micro ATM Section -->
+      <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-blue-900 mb-1">KYA AAPKE PAAS CSC KA MICRO ATM HAI? *</label>
+          <select id="hasMicroAtm" onchange="toggleMicroAtm(); validateField('hasMicroAtm')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none">
+            <option value="">-- SELECT OPTION --</option>
+            <option value="YES">YES</option>
+            <option value="NO">NO</option>
+          </select>
+          <p id="err_hasMicroAtm" class="text-red-600 text-xs mt-1 hidden"></p>
+        </div>
+
+        <div id="atmDetailsDiv" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">MICRO ATM MODEL NUMBER *</label>
+            <select id="atmModel" onchange="validateField('atmModel')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white uppercase focus:outline-none">
+              <option value="">-- SELECT MODEL --</option>
+              <option value="EUREKA-Y50">EUREKA-Y50</option>
+              <option value="PAX-D180">PAX-D180</option>
+              <option value="MOREFUN-MP63">MOREFUN-MP63</option>
+            </select>
+            <p id="err_atmModel" class="text-red-600 text-xs mt-1 hidden"></p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">MICRO ATM SERIAL NUMBER *</label>
+            <input type="text" id="serialNo" maxlength="30" oninput="forceUpper(this); validateField('serialNo')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:outline-none" placeholder="ENTER DEVICE SERIAL NO">
+            <p id="err_serialNo" class="text-red-600 text-xs mt-1 hidden"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Auto-Captured GPS -->
+      <div class="bg-slate-50 p-3 rounded-lg border text-xs">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <span class="text-slate-500 block">LATITUDE (AUTO):</span>
+            <input type="text" id="lat" readonly class="font-mono font-bold text-slate-800 bg-transparent w-full outline-none" placeholder="FETCHING...">
+          </div>
+          <div>
+            <span class="text-slate-500 block">LONGITUDE (AUTO):</span>
+            <input type="text" id="lng" readonly class="font-mono font-bold text-slate-800 bg-transparent w-full outline-none" placeholder="FETCHING...">
+          </div>
+        </div>
+        <p id="err_gps" class="text-red-600 text-xs mt-1.5 hidden"></p>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" id="submitBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-lg shadow transition uppercase">
+        SUBMIT DETAILS
+      </button>
+    </form>
+
+    <!-- Success Receipt -->
+    <div id="receiptBox" class="p-6 text-center hidden space-y-3">
+      <div class="text-green-600 text-4xl font-bold">✓</div>
+      <h2 class="text-lg font-bold text-slate-800 uppercase">REGISTRATION SUCCESSFUL!</h2>
+      <p class="text-sm text-slate-600 uppercase">AAPKA ACKNOWLEDGEMENT NUMBER:</p>
+      <div id="ackDisplay" class="text-xl font-mono font-bold text-blue-800 bg-blue-50 py-2 px-4 rounded inline-block border border-blue-200 uppercase"></div>
+      <div class="pt-2">
+        <a id="mapAnchor" href="#" target="_blank" class="text-xs text-blue-600 underline uppercase">VIEW CAPTURED LOCATION ON GOOGLE MAPS</a>
+      </div>
+      <button onclick="location.reload()" class="mt-4 bg-slate-800 text-white text-xs px-4 py-2 rounded uppercase">NEW ENTRY</button>
+    </div>
+  </div>
+
+<script>
+  const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; // Yahan apna Web App URL dalein
+  let masterData = { rural: [], urban: [] };
+
+  // Real-Time Force UPPERCASE while preserving cursor position
+  function forceUpper(el) {
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    el.value = el.value.toUpperCase();
+    el.setSelectionRange(start, end);
+  }
+
+  // Real-Time Force LOWERCASE for Email ID while preserving cursor position
+  function forceLower(el) {
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    el.value = el.value.toLowerCase();
+    el.setSelectionRange(start, end);
+  }
+
+  window.onload = async () => {
+    captureGPS();
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getMaster`);
+      const json = await res.json();
+      masterData.rural = json.rural;
+      masterData.urban = json.urban;
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('vleForm').classList.remove('hidden');
+      populateDistricts();
+    } catch (e) {
+      document.getElementById('loader').innerText = "Master Data load karne mein error aaya. URL check karein.";
+    }
+  };
+
+  function captureGPS() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          document.getElementById('lat').value = pos.coords.latitude.toFixed(6);
+          document.getElementById('lng').value = pos.coords.longitude.toFixed(6);
+          clearError('gps');
+        },
+        err => {
+          setError('gps', 'Location access blocked hai. Kripya browser/mobile settings se GPS location allow karein.');
+        }
+      );
+    } else {
+      setError('gps', 'Aapka browser GPS location support nahi karta.');
+    }
+  }
+
+  function getLocationType() {
+    return document.querySelector('input[name="locationType"]:checked').value;
+  }
+
+  function getActiveRows() {
+    return getLocationType() === 'RURAL' ? masterData.rural : masterData.urban;
+  }
+
+  function toggleLocationType() {
+    const isRural = getLocationType() === 'RURAL';
+    document.getElementById('level3Label').innerText = isRural ? "GRAM PANCHAYAT *" : "CITY NAME *";
+    document.getElementById('level4Label').innerText = isRural ? "VILLAGE *" : "WARD NAME & NUMBER *";
+    populateDistricts();
+    ['district', 'block', 'level3', 'level4'].forEach(clearError);
+  }
+
+  function fillSelect(selectId, items, placeholder) {
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = `<option value="">${placeholder.toUpperCase()}</option>`;
+    items.sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.code.toUpperCase();
+      opt.text = item.name.toUpperCase();
+      sel.appendChild(opt);
+    });
+  }
+
+  function populateDistricts() {
+    const rows = getActiveRows();
+    const map = new Map();
+    rows.forEach(r => { if (r[2]) map.set(String(r[2]).trim(), String(r[1]).trim()); });
+    fillSelect('district', Array.from(map, ([code, name]) => ({ code, name })), '-- SELECT DISTRICT --');
+    document.getElementById('block').innerHTML = '';
+    document.getElementById('level3').innerHTML = '';
+    document.getElementById('level4').innerHTML = '';
+  }
+
+  function onDistrictChange() {
+    const distCode = document.getElementById('district').value;
+    const rows = getActiveRows();
+    const map = new Map();
+    rows.filter(r => String(r[2]).trim().toUpperCase() === distCode)
+        .forEach(r => { if (r[4]) map.set(String(r[4]).trim(), String(r[3]).trim()); });
+    fillSelect('block', Array.from(map, ([code, name]) => ({ code, name })), '-- SELECT BLOCK --');
+    document.getElementById('level3').innerHTML = '';
+    document.getElementById('level4').innerHTML = '';
+  }
+
+  function onBlockChange() {
+    const distCode = document.getElementById('district').value;
+    const blkCode = document.getElementById('block').value;
+    const rows = getActiveRows();
+    const map = new Map();
+    rows.filter(r => String(r[2]).trim().toUpperCase() === distCode && String(r[4]).trim().toUpperCase() === blkCode)
+        .forEach(r => { if (r[6]) map.set(String(r[6]).trim(), String(r[5]).trim()); });
+    const placeholder = getLocationType() === 'RURAL' ? '-- SELECT GRAM PANCHAYAT --' : '-- SELECT CITY --';
+    fillSelect('level3', Array.from(map, ([code, name]) => ({ code, name })), placeholder);
+    document.getElementById('level4').innerHTML = '';
+  }
+
+  function onLevel3Change() {
+    const distCode = document.getElementById('district').value;
+    const blkCode = document.getElementById('block').value;
+    const l3Code = document.getElementById('level3').value;
+    const rows = getActiveRows();
+    const map = new Map();
+    rows.filter(r => String(r[2]).trim().toUpperCase() === distCode && String(r[4]).trim().toUpperCase() === blkCode && String(r[6]).trim().toUpperCase() === l3Code)
+        .forEach(r => { if (r[8]) map.set(String(r[8]).trim(), String(r[7]).trim()); });
+    const placeholder = getLocationType() === 'RURAL' ? '-- SELECT VILLAGE --' : '-- SELECT WARD --';
+    fillSelect('level4', Array.from(map, ([code, name]) => ({ code, name })), placeholder);
+  }
+
+  function toggleMicroAtm() {
+    const hasAtm = document.getElementById('hasMicroAtm').value === 'YES';
+    document.getElementById('atmDetailsDiv').classList.toggle('hidden', !hasAtm);
+    if (!hasAtm) {
+      clearError('atmModel');
+      clearError('serialNo');
+    }
+  }
+
+  // Inline Error Helpers
+  function setError(fieldId, message) {
+    const errEl = document.getElementById(`err_${fieldId}`);
+    const inputEl = document.getElementById(fieldId);
+    if (errEl) {
+      errEl.innerText = message;
+      errEl.classList.remove('hidden');
+    }
+    if (inputEl && fieldId !== 'gps') {
+      inputEl.classList.remove('border-slate-300');
+      inputEl.classList.add('border-red-500', 'bg-red-50/30');
+    }
+    return false;
+  }
+
+  function clearError(fieldId) {
+    const errEl = document.getElementById(`err_${fieldId}`);
+    const inputEl = document.getElementById(fieldId);
+    if (errEl) {
+      errEl.innerText = '';
+      errEl.classList.add('hidden');
+    }
+    if (inputEl && fieldId !== 'gps') {
+      inputEl.classList.remove('border-red-500', 'bg-red-50/30');
+      inputEl.classList.add('border-slate-300');
+    }
+    return true;
+  }
+
+  // Live Single-Field Validator (Exact rules from PORTAL VALIDATION.xlsx)
+  function validateField(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el && fieldId !== 'gps') return true;
+    const val = el ? el.value.trim() : '';
+
+    switch (fieldId) {
+      case 'district':
+        return val ? clearError('district') : setError('district', 'Please select District.');
+      case 'block':
+        return val ? clearError('block') : setError('block', 'Please select Block.');
+      case 'level3':
+        return val ? clearError('level3') : setError('level3', getLocationType() === 'RURAL' ? 'Please select Gram Panchayat.' : 'Please select City Name.');
+      case 'level4':
+        return val ? clearError('level4') : setError('level4', getLocationType() === 'RURAL' ? 'Please select Village.' : 'Please select Ward Name & Number.');
+      
+      case 'firstName': {
+        const clean = val.replace(/\s+/g, ' ').toUpperCase();
+        return (/^[A-Z]+(?:\s[A-Z]+)*$/.test(clean) && clean.length >= 2 && clean.length <= 50)
+          ? clearError('firstName')
+          : setError('firstName', 'VLE First Name is invalid. Only alphabets and single spaces allowed (2–50 chars).');
+      }
+      case 'lastName': {
+        const clean = val.replace(/\s+/g, ' ').toUpperCase();
+        return (/^[A-Z]+(?:\s[A-Z]+)*$/.test(clean) && clean.length >= 2 && clean.length <= 50)
+          ? clearError('lastName')
+          : setError('lastName', 'VLE Last Name is invalid. Only alphabets and single spaces allowed (2–50 chars).');
+      }
+      case 'cscId':
+        return /^\d{8}001\d$/.test(val)
+          ? clearError('cscId')
+          : setError('cscId', "Enter valid 12-digit CSC ID (9th-10th digit '0' & 11th digit '1').");
+      
+      case 'panCard':
+        return /^[A-Z]{3}P[A-Z][0-9]{4}[A-Z]$/.test(val.toUpperCase())
+          ? clearError('panCard')
+          : setError('panCard', "Invalid PAN Card. 4th character must be 'P' (e.g., ABCPK1234F).");
+      
+      case 'mobile':
+        return /^[6-9]\d{9}$/.test(val)
+          ? clearError('mobile')
+          : setError('mobile', 'Enter 10 digit valid mobileNo');
+      
+      case 'email':
+        return (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.toLowerCase()) && val.length >= 6 && val.length <= 100)
+          ? clearError('email')
+          : setError('email', 'Invalid email address.');
+      
+      case 'shopName':
+        return /^[A-Z0-9\s&.-]{5,50}$/.test(val.toUpperCase())
+          ? clearError('shopName')
+          : setError('shopName', 'shopname is invalid. Length should be between 5 and 50 characters (only & . - allowed).');
+      
+      case 'address':
+        return /^[A-Z0-9\s,./-]{5,200}$/.test(val.toUpperCase())
+          ? clearError('address')
+          : setError('address', 'Invalid address. Length must be 5–200 chars; only , . / - allowed.');
+      
+      case 'areaName':
+        return /^[A-Z0-9\s,.-]{3,30}$/.test(val.toUpperCase())
+          ? clearError('areaName')
+          : setError('areaName', 'area name is invalid. Length should be between 3 and 30 characters (only , . - allowed).');
+      
+      case 'pinCode':
+        return /^[1-9][0-9]{5}$/.test(val)
+          ? clearError('pinCode')
+          : setError('pinCode', 'Enter valid pincode. Length should be 6 characters.');
+      
+      case 'hasMicroAtm':
+        return val ? clearError('hasMicroAtm') : setError('hasMicroAtm', 'Please select YES or NO.');
+      
+      case 'atmModel':
+        if (document.getElementById('hasMicroAtm').value !== 'YES') return clearError('atmModel');
+        return val ? clearError('atmModel') : setError('atmModel', 'Please select Micro ATM Model Number.');
+      
+      case 'serialNo':
+        if (document.getElementById('hasMicroAtm').value !== 'YES') return clearError('serialNo');
+        return /^[A-Z0-9-]{4,30}$/.test(val.toUpperCase())
+          ? clearError('serialNo')
+          : setError('serialNo', 'Enter valid Micro ATM Serial Number (4–30 alphanumeric characters).');
+      
+      case 'gps':
+        const lat = document.getElementById('lat').value.trim();
+        if (!lat) {
+          captureGPS();
+          return setError('gps', 'GPS Coordinates capture nahi hue hain. Location permission allow karein.');
+        }
+        return clearError('gps');
+    }
+    return true;
+  }
+
+  function validateAllFields() {
+    const fields = [
+      'district', 'block', 'level3', 'level4',
+      'firstName', 'lastName', 'cscId', 'panCard',
+      'mobile', 'email', 'shopName', 'address',
+      'areaName', 'pinCode', 'hasMicroAtm', 'atmModel', 'serialNo', 'gps'
+    ];
+    let firstInvalidId = null;
+
+    fields.forEach(id => {
+      const isValid = validateField(id);
+      if (!isValid && !firstInvalidId) {
+        firstInvalidId = id;
+      }
+    });
+
+    if (firstInvalidId) {
+      const targetEl = firstInvalidId === 'gps' ? document.getElementById('lat') : document.getElementById(firstInvalidId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (firstInvalidId !== 'gps') targetEl.focus();
+      }
+      return false;
+    }
+    return true;
+  }
+
+  document.getElementById('vleForm').onsubmit = async (e) => {
+    e.preventDefault();
+    document.getElementById('serverErrorBanner').classList.add('hidden');
+    
+    if (!validateAllFields()) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = "VALIDATING & SAVING...";
+
+    const getText = (id) => {
+      const el = document.getElementById(id);
+      return (el.options[el.selectedIndex]?.text || '').toUpperCase();
+    };
+
+    const payload = {
+      locationType: getLocationType().toUpperCase(),
+      districtCode: document.getElementById('district').value.toUpperCase(),
+      districtName: getText('district'),
+      blockCode: document.getElementById('block').value.toUpperCase(),
+      blockName: getText('block'),
+      level3Code: document.getElementById('level3').value.toUpperCase(),
+      level3Name: getText('level3'),
+      level4Code: document.getElementById('level4').value.toUpperCase(),
+      level4Name: getText('level4'),
+      firstName: document.getElementById('firstName').value.trim().replace(/\s+/g, ' ').toUpperCase(),
+      lastName: document.getElementById('lastName').value.trim().replace(/\s+/g, ' ').toUpperCase(),
+      cscId: document.getElementById('cscId').value.trim(),
+      panCard: document.getElementById('panCard').value.trim().toUpperCase(),
+      mobile: document.getElementById('mobile').value.trim(),
+      email: document.getElementById('email').value.trim().toLowerCase(), // Lowercase only
+      address: document.getElementById('address').value.trim().toUpperCase(),
+      areaName: document.getElementById('areaName').value.trim().toUpperCase(),
+      pinCode: document.getElementById('pinCode').value.trim(),
+      shopName: document.getElementById('shopName').value.trim().toUpperCase(),
+      hasMicroAtm: document.getElementById('hasMicroAtm').value.toUpperCase(),
+      atmModel: document.getElementById('atmModel').value.toUpperCase(),
+      serialNo: document.getElementById('serialNo').value.trim().toUpperCase(),
+      lat: document.getElementById('lat').value,
+      lng: document.getElementById('lng').value
+    };
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        document.getElementById('vleForm').classList.add('hidden');
+        document.getElementById('receiptBox').classList.remove('hidden');
+        document.getElementById('ackDisplay').innerText = result.ackNo.toUpperCase();
+        document.getElementById('mapAnchor').href = result.mapLink;
+      } else {
+        const msg = result.message || "Submission failed.";
+        if (msg.includes("CSC ID")) setError('cscId', msg);
+        else if (msg.includes("PAN Card")) setError('panCard', msg);
+        else if (msg.includes("Serial Number")) setError('serialNo', msg);
+        
+        document.getElementById('serverErrorText').innerText = msg;
+        document.getElementById('serverErrorBanner').classList.remove('hidden');
+        document.getElementById('serverErrorBanner').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        btn.disabled = false;
+        btn.innerText = "SUBMIT DETAILS";
+      }
+    } catch (err) {
+      document.getElementById('serverErrorText').innerText = "Network Error! Internet connection check karke dobara koshish karein.";
+      document.getElementById('serverErrorBanner').classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerText = "SUBMIT DETAILS";
+    }
+  };
+</script>
+</body>
+</html>
