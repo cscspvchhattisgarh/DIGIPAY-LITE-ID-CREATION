@@ -107,9 +107,9 @@
           <input type="text" id="cscId" maxlength="12" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); validateField('cscId')" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none" placeholder="XXXXXXXX001X">
           <p id="err_cscId" class="text-red-600 text-xs mt-1 hidden"></p>
 
-          <!-- DigiPay Lite ID Already Created Alert Box -->
+          <!-- DigiPay Lite ID Already Created Alert Box (Pure Hindi) -->
           <div id="digipayLiteAlert" class="hidden mt-2 bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-lg text-amber-950 text-xs leading-relaxed shadow-sm">
-            <p class="font-bold text-amber-900 text-sm mb-1">⚠️ DIGIPAY LITE ID ALREADY CREATED!</p>
+            <p class="font-bold text-amber-900 text-sm mb-1">⚠️ DIGIPAY LITE ID पहले से बनी हुई है!</p>
             <p id="digipayLiteMsgText"></p>
           </div>
         </div>
@@ -558,13 +558,13 @@
     return isValid;
   }
 
-  // DigiPay Lite ID Already Created Display Helper
+  // DigiPay Lite ID Already Created Display Helper (Pure Hindi)
   function showDigipayLiteNotice(liteId) {
     const alertBox = document.getElementById('digipayLiteAlert');
     const msgEl = document.getElementById('digipayLiteMsgText');
     const cscInput = document.getElementById('cscId');
     
-    msgEl.innerHTML = `AAPKI DIGIPAY LITE ID PAHALE SE BAN GAI HAI JO KI <span class="font-mono font-bold text-blue-900 bg-white px-1.5 py-0.5 rounded border border-amber-300">"${liteId}"</span> HAI. KRIPAYA <a href="https://digipaylite.in/" target="_blank" class="text-blue-700 font-bold underline">https://digipaylite.in/</a> ME JA KAR <strong>FORGOT PASSWORD</strong> KAREN, AAPKO MSG ME OTP SATYAPAN KE BAAD TEXT MESSAGE ME PASSWORD BHI MIL JAYEGA.`;
+    msgEl.innerHTML = `आपकी DigiPay Lite ID पहले से बन गई है, जो कि <span class="font-mono font-bold text-blue-900 bg-white px-1.5 py-0.5 rounded border border-amber-300">"${liteId}"</span> है। कृपया <a href="https://digipaylite.in/" target="_blank" class="text-blue-700 font-bold underline">https://digipaylite.in/</a> पर जाकर <strong>Forgot Password</strong> करें। आपको मोबाइल पर प्राप्त OTP सत्यापन के बाद टेक्स्ट मैसेज (SMS) के माध्यम से नया पासवर्ड मिल जाएगा।`;
     alertBox.classList.remove('hidden');
     cscInput.classList.remove('border-slate-300');
     cscInput.classList.add('border-amber-500', 'bg-amber-50/40');
